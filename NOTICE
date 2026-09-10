@@ -1,0 +1,20 @@
+BellaNes Lab
+Copyright 2026 BellaNes Systems
+
+This product includes software originally developed as BrainQuake by
+HongLabTHU (https://github.com/HongLabTHU/BrainQuake), the reference
+implementation accompanying:
+
+  Hu et al., "BrainQuake: An Open-Source Python Toolbox for the
+  Stereoelectroencephalography Data Analysis"
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC8782204/
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This work has been modified. The numeric services under server/app/services/
+are ports of the upstream implementation, restructured into a FastAPI job
+service; each module's header comment records its upstream source file, and
+CLAUDE.md carries the full porting table. Substantial parts of this
+distribution — the job server, the web client, the Docker packaging, the
+signal-processing core under server/app/sigproc/, and the verification
+tooling — are new work and are not derived from the upstream project.

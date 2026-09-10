@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bellanes-server"
+version = "2.0.0"
+description = "BellaNes Lab REST API server for SEEG analysis and epilepsy surgery planning"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.100",
+    "uvicorn>=0.20",
+    "sqlalchemy>=2.0",
+    "alembic>=1.10",
+    "pydantic-settings>=2.0",
+    "mne>=1.0",
+    "nibabel>=5.0",
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "scikit-learn>=1.3",
+    "python-multipart>=0.0.5",
+    "h5py>=3.8",  # reads ITK .h5 registration transforms exported by 3D Slicer (.mrb import)
+]
+
+# Explicit, because flat-layout auto-discovery also picks up the runtime `data/`
+# and `alembic/` dirs and refuses to build.
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "httpx2>=2.0",  # not a typo: starlette.testclient deprecates plain httpx in its favour
+    "edfio>=0.4",  # writes synthetic EDF fixtures for edf.py/ictal.py/interictal.py tests
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+# E501 (line length) is off: several modules carry long provenance comments that
+# read better unwrapped. NPY002 is off because the ported numeric code uses the
+# legacy np.random API and reproducing its output matters more than the new API.
+select = ["E", "F", "W", "I", "UP", "B", "NPY"]
+ignore = ["E501", "NPY002", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# Alembic migrations are generated; app/models/__init__.py re-exports for
+# convenience and both legitimately have "unused" imports.
+"alembic/versions/*" = ["E", "F", "I"]
+"app/models/__init__.py" = ["F401"]
+"app/schemas/__init__.py" = ["F401"]
+"app/routers/__init__.py" = ["F401"]

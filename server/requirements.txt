@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+alembic
+pydantic-settings
+mne
+nibabel
+numpy
+scipy
+scikit-learn
+pytest
+httpx2  # not a typo; see pyproject.toml
+python-multipart
+h5py

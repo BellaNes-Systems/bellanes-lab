@@ -1,0 +1,126 @@
+import { useReducer } from "react";
+import type { Dispatch } from "react";
+
+export interface EegViewerState {
+  dispChansNum: number;
+  dispChansStart: number;
+  dispWaveMul: number;
+  dispTimeWin: number;
+  dispTimeStart: number;
+  excludedChannels: Set<string>;
+  /** Which recording LOAD_RECORDING has run for. Keyed rather than a boolean so
+   * switching to another EDF re-runs it against that file's channel names
+   * instead of carrying over this one's. */
+  loadedEdfId: number | null;
+  filterBandLow: number;
+  filterBandHigh: number;
+  filterEnabled: boolean;
+  /** Power-line frequency notched out of the displayed traces, and the value
+   * the EI form submits. 50 Europe/Asia, 60 North America. Shared so the
+   * traces reviewed on screen are filtered the same way as the analysis. */
+  mainsFreq: number;
+}
+
+export type EegViewerAction =
+  | { type: "PAGE_CHANNELS"; direction: 1 | -1 }
+  | { type: "SET_CHANS_NUM"; value: number }
+  | { type: "SET_GAIN"; multiplier: number }
+  | { type: "PAN_TIME"; direction: 1 | -1 }
+  | { type: "SET_TIME_WIN"; delta: number }
+  | { type: "SET_TIME_START"; value: number }
+  | { type: "DELETE_CHANNELS"; channels: string[] }
+  | { type: "RESTORE_CHANNELS"; channels: string[] }
+  | { type: "LOAD_RECORDING"; edfArtifactId: number; auxChannels: string[] }
+  | { type: "SET_FILTER_BAND"; low: number; high: number }
+  | { type: "SET_MAINS_FREQ"; value: number }
+  | { type: "TOGGLE_FILTER" };
+
+function reducer(state: EegViewerState, action: EegViewerAction): EegViewerState {
+  switch (action.type) {
+    case "PAGE_CHANNELS": {
+      const next = state.dispChansStart + action.direction * state.dispChansNum;
+      return { ...state, dispChansStart: Math.max(0, next) };
+    }
+    case "SET_CHANS_NUM":
+      return { ...state, dispChansNum: Math.max(1, action.value) };
+    case "SET_GAIN":
+      return { ...state, dispWaveMul: Math.max(0.1, state.dispWaveMul * action.multiplier) };
+    case "PAN_TIME": {
+      const delta = action.direction * state.dispTimeWin * 0.2;
+      return { ...state, dispTimeStart: Math.max(0, state.dispTimeStart + delta) };
+    }
+    case "SET_TIME_WIN":
+      return { ...state, dispTimeWin: Math.max(2, state.dispTimeWin + action.delta) };
+    case "SET_TIME_START":
+      return { ...state, dispTimeStart: Math.max(0, action.value) };
+    case "DELETE_CHANNELS": {
+      const next = new Set(state.excludedChannels);
+      action.channels.forEach((c) => next.add(c));
+      return { ...state, excludedChannels: next };
+    }
+    case "RESTORE_CHANNELS": {
+      const next = new Set(state.excludedChannels);
+      action.channels.forEach((c) => next.delete(c));
+      return { ...state, excludedChannels: next };
+    }
+    case "LOAD_RECORDING": {
+      // Runs once per recording. Re-applying it on every render would undo the
+      // user's restores; running it never would leave the default producing
+      // meaningless output. Exclusions are replaced rather than added to, since
+      // the previous recording's names do not apply to this one -- and the
+      // scroll position goes back to the start, since a position valid in the
+      // previous file can be past the end of this one (which requests an
+      // out-of-range window and draws nothing).
+      if (state.loadedEdfId === action.edfArtifactId) return state;
+      return {
+        ...state,
+        excludedChannels: new Set(action.auxChannels),
+        loadedEdfId: action.edfArtifactId,
+        dispTimeStart: 0,
+        dispChansStart: 0,
+      };
+    }
+    case "SET_FILTER_BAND":
+      return { ...state, filterBandLow: action.low, filterBandHigh: action.high };
+    case "SET_MAINS_FREQ":
+      return { ...state, mainsFreq: action.value };
+    case "TOGGLE_FILTER":
+      return { ...state, filterEnabled: !state.filterEnabled };
+    default:
+      return state;
+  }
+}
+
+export interface EegViewerDefaults {
+  filterBandLow: number;
+  filterBandHigh: number;
+}
+
+/**
+ * Shared pan/zoom/gain/channel-window/filter state for the EEG canvas --
+ * directly reproduces the legacy client_ictal.py/client_inter.py interaction
+ * model (disp_chans_num, disp_wave_mul, disp_time_win, etc.), which was
+ * near-identical duplicated code in both files; this is the single copy.
+ * The caller supplies the initial filter band (the analysis process declares
+ * it), which is all the old mode: "ictal" | "interictal" argument selected --
+ * 60-140Hz vs 80-250Hz, matching the legacy tabs' own defaults.
+ */
+export function useEegViewerState(defaults: EegViewerDefaults): {
+  state: EegViewerState;
+  dispatch: Dispatch<EegViewerAction>;
+} {
+  const [state, dispatch] = useReducer(reducer, undefined, () => ({
+    dispChansNum: 20,
+    dispChansStart: 0,
+    dispWaveMul: 1,
+    dispTimeWin: 5,
+    dispTimeStart: 0,
+    excludedChannels: new Set<string>(),
+    loadedEdfId: null,
+    filterBandLow: defaults.filterBandLow,
+    filterBandHigh: defaults.filterBandHigh,
+    filterEnabled: true,
+    mainsFreq: 50,
+  }));
+  return { state, dispatch };
+}

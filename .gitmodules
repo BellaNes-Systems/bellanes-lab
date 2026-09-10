@@ -1,0 +1,3 @@
+[submodule "freebrowse"]
+	path = freebrowse
+	url = https://github.com/freesurfer/freebrowse
