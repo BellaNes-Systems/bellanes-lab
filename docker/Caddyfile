@@ -1,0 +1,10 @@
+# Public entrypoint for cloud deploys (docker-compose.cloud.yml): HTTPS + a shared demo login.
+{$SITE_ADDRESS} {
+	request_body {
+		max_size 1GB
+	}
+	basic_auth {
+		{$DEMO_USER} {$DEMO_PASS_HASH}
+	}
+	reverse_proxy web:8080
+}
